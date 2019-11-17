@@ -1,18 +1,65 @@
-var Client = require('instagram-private-api');
+const moment = require('moment');
 
-console.log(Client);
+const cdxUtil = require('@cdx/util');
+const config = require('@cdx/config');
 
-// var device = new Client.Device('myuser');
-// var storage = new Client.CookieFileStorage(__dirname + '/cookies/myuser.json');
+const logger = cdxUtil.logging;
 
-// var user = 'haniev_i'
-// var pass = 'sdfjhSh238';
+async function instAuthJob() {
+  const queue = new cdxUtil.queue.RevivableQueue(
+    config,
+    config.queues.instAuth.jobs.performance,
+  );
 
-// Client.Session.create(device, storage, user, pass).then(session => {});
+  queue.processJob(async (job) => {
+    console.log('62');
+  }, {
+    filterFn: job => true,
+    concurrency: 8,
+  });
 
-// var session = new Client.Session(device, storage);
+  return queue;
+}
 
-// Client.Account.searchForUser(session, 'instagram')
-//   .then(data => {
-//     console.log(data._params);
-//   });
+
+async function ensureJobs(ratingQueue) {
+  const queue = new cdxUtil.queue.SimpleQueue(
+    config,
+    config.queues.instAuth.jobs.ensureJobs,
+  );
+
+  const repeatOpts = { every: config.constants.mSecFiveMinutes };
+  await queue.addRepeatableJob({}, repeatOpts);
+
+  if (config.common.coldStart) await queue.addSimpleJob({});
+
+  queue.processJob(async () => {
+    console.log('processJob to ensure');
+    // const validKeys = await cdx.db.apikey.getValidKeys();
+
+    // logger.info(
+    //   'ensure',
+    //   { validKeysAmount: validKeys.length },
+    //   config.logging.instAuth.basic,
+    // );
+
+    // const baseAssets = ['USD', 'BTC', 'ETH', 'BNB'];
+
+    // const jobs = baseAssets.map(baseAsset => validKeys
+    //   .map(
+    //     ({ keyId, stock }) => ratingQueue.ensureRevivableJob({
+    //       keyId, stock, baseAsset,
+    //     }, null, config.constants.mSecOneSecond),
+    //   ));
+
+    // const promiseJobs = [].concat(...jobs);
+
+    // return Promise.all(promiseJobs);
+  });
+}
+
+(async () => {
+  const instAuthQueue = await instAuthJob();
+  await ensureJobs(instAuthQueue);
+})()
+  .then(() => logger.info('start', {}, config.logging.instAuth.basic));
