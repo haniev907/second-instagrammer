@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const uuid = require('uuid');
 
+const moment = require('moment');
+
 const MongoModelBase = require('./base');
 
 class MongoUser extends MongoModelBase {
@@ -9,11 +11,11 @@ class MongoUser extends MongoModelBase {
 
     this.schema = new mongoose.Schema({
       _id: { type: String, default: uuid.v4 },
-      name: { type: String, required: true, maxlength: 128 },
+      name: { type: String, required: true, index: true, unique: true },
       bot: { type: Boolean, required: true, default: false },
       password: { type: String },
       followers: { type: Number },
-      subscriptions: { type: Number },
+      subscriptions: { type: Number, default: 0 },
       publications: { type: Number },
       status: { type: String },
       private: { type: Boolean },
@@ -23,6 +25,7 @@ class MongoUser extends MongoModelBase {
         lastFormer: { type: String },
         formers: { type: Array, default: [] },
       },
+      lastUpdate: { type: Date },
     });
 
     this.Model = mongoose.model('User', this.schema);
@@ -32,6 +35,17 @@ class MongoUser extends MongoModelBase {
     const doc = new this.Model(infArray);
 
     return doc.save();
+  }
+
+  async getUsers(query = {}) {
+    return this.Model.find(query);
+  }
+
+  async getNewUsers(cursor = 0, limit = 10) {
+    return this.Model
+      .find({ bot: false, 'observed.formers': { $size: 0 } })
+      .skip(cursor)
+      .limit(limit);
   }
 
   async getInfo(userId) {

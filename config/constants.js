@@ -29,4 +29,8 @@ config.dataCollectingStart = moment.utc()
   .subtract(1, 'year')
   .startOf('day');
 
+config.ttlForUserUpdate = config.mSecFiveMinutes;
+
+config.limitSubscriptions = 50;
+
 module.exports = config;

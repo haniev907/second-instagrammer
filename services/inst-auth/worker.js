@@ -2,6 +2,7 @@ const moment = require('moment');
 
 const cdxUtil = require('@cdx/util');
 const config = require('@cdx/config');
+const cdx = require('@cdx/core')(config);
 
 const logger = cdxUtil.logging;
 
@@ -9,20 +10,27 @@ async function instAuthJob() {
   const queue = new cdxUtil.queue.RevivableQueue(
     config,
     config.queues.instAuth.jobs.performance,
+    {
+      limiter: {
+        max: 1,
+        duration: config.constants.mSecOneSecond,
+      },
+    },
   );
 
   queue.processJob(async (job) => {
-    console.log('62');
+    const { leader, follower } = job.data;
+
+    // return cdxUtil.queue.RevivableQueue.removeJob();
   }, {
-    filterFn: job => true,
-    concurrency: 8,
+    concurrency: 1,
   });
 
   return queue;
 }
 
 
-async function ensureJobs(ratingQueue) {
+async function ensureJobs(instAuthQueue) {
   const queue = new cdxUtil.queue.SimpleQueue(
     config,
     config.queues.instAuth.jobs.ensureJobs,
@@ -34,26 +42,27 @@ async function ensureJobs(ratingQueue) {
   if (config.common.coldStart) await queue.addSimpleJob({});
 
   queue.processJob(async () => {
-    console.log('processJob to ensure');
-    // const validKeys = await cdx.db.apikey.getValidKeys();
+    const bots = await cdx.db.user.getUsers({ bot: true });
 
-    // logger.info(
-    //   'ensure',
-    //   { validKeysAmount: validKeys.length },
-    //   config.logging.instAuth.basic,
-    // );
+    const pairingFn = async (prev, curentBot) => {
+      const cursor = await prev;
 
-    // const baseAssets = ['USD', 'BTC', 'ETH', 'BNB'];
+      const limit = config.constants.limitSubscriptions - curentBot.subscriptions;
+      const newUsers = await cdx.db.user.getNewUsers(cursor, limit); 
 
-    // const jobs = baseAssets.map(baseAsset => validKeys
-    //   .map(
-    //     ({ keyId, stock }) => ratingQueue.ensureRevivableJob({
-    //       keyId, stock, baseAsset,
-    //     }, null, config.constants.mSecOneSecond),
-    //   ));
+      newUsers.map((curentUser) => 
+        instAuthQueue.ensureRevivableJob({
+          follower: curentUser.id,
+          leader: curentBot.id,
+        })
+      );
+
+      return cursor + limit;
+    };
+
+    const jobs = bots.reduce(pairingFn, 0);
 
     // const promiseJobs = [].concat(...jobs);
-
     // return Promise.all(promiseJobs);
   });
 }
