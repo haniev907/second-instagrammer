@@ -126,6 +126,7 @@ class Instagram {
     };
 
     this.getActivity = wrapper(this.getActivity.bind(this));
+    this.getFullInfo = wrapper(this.getFullInfo.bind(this)); 
   }
 
   async getActivity() {

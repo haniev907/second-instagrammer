@@ -53,6 +53,18 @@ class MongoUser extends MongoModelBase {
       { _id: userId },
     ).exec();
   }
+
+  async updateUser(userId, updateOptions) {
+    await this.Model.updateOne(
+      { _id: userId },
+      {  
+        ...updateOptions,
+        lastUpdate: moment.utc().toDate(),
+      },
+    ).exec();
+
+    return this.getBuyId(userId);
+  }
 }
 
 module.exports = MongoUser;

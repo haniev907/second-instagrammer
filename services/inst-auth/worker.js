@@ -24,13 +24,32 @@ async function instAuthJob() {
     const leaderData = await cdx.db.user.getBuyId(leader);
     const followerData = await cdx.db.user.getBuyId(follower);
 
+    console.log('Start queue for users - ', {
+      leader,
+      follower,
+    });
+
     const client = cdx.stock.api.init(
-      { username: 'prostoy495', password: 'asdfkk239j&', },
+      { username: leaderData.name, password: leaderData.password, },
     );
 
     const updateLeader = async (stop = false) => {
-      const response = await client.getActivity();
-      console.log({ response });
+      const response = await client.getFullInfo();
+
+      console.log('Update leader info');
+      console.log({ response, });
+
+      if (response.status === 'error') return;
+
+      const dbResponse = await cdx.db.user.updateUser(leader, {
+        followers: response.edge_followed_by.count,
+        subscriptions: response.edge_follow.count,
+        status: response.biography,
+        private: response.is_private,
+        instId: response.id,
+      });
+
+      console.log({ dbResponse, });
     };
 
     if (!leaderData.lastUpdate || moment.utc()
@@ -40,7 +59,28 @@ async function instAuthJob() {
       updateLeader();
     }
 
-    await (new Promise(resolve => setTimeout(resolve, 30000)))
+    const updateFollower = async (stop = false) => {
+      const response = await client.getFullInfo(followerData.name);
+
+      console.log('Update follower info');
+      console.log({ response, });
+
+      if (response.status === 'error') return;
+
+      const dbResponse = await cdx.db.user.updateUser(follower, {
+        followers: response.edge_followed_by.count,
+        subscriptions: response.edge_follow.count,
+        status: response.biography,
+        private: response.is_private,
+        instId: response.id,
+      });
+
+      console.log({ dbResponse, });
+    };
+
+    updateFollower();
+
+    await (new Promise(resolve => setTimeout(resolve, 300000)))
 
     // return cdxUtil.queue.RevivableQueue.removeJob();
   }, {
@@ -61,6 +101,22 @@ async function ensureJobs(instAuthQueue) {
 
   if (config.common.coldStart) await queue.addSimpleJob({});
 
+  // cdx.db.user.createUser({
+  //   name: 'prostoy495',
+  //   password: 'asdfkk239j&',
+  //   bot: true,
+  // });
+
+  // cdx.db.user.createUser({
+  //   name: '_fa_n_ta_ze_r_',
+  // });
+
+  // cdx.db.user.createUser({
+  //   name: 'haniev_i',
+  // });
+
+  // return false;
+
   queue.processJob(async () => {
     const bots = await cdx.db.user.getUsers({ bot: true });
 
@@ -68,7 +124,10 @@ async function ensureJobs(instAuthQueue) {
       const cursor = await prev;
 
       const limit = config.constants.limitSubscriptions - curentBot.subscriptions;
-      const newUsers = await cdx.db.user.getNewUsers(cursor, limit); 
+
+      if (limit < 0) return cursor;
+
+      const newUsers = await cdx.db.user.getNewUsers(cursor, limit);
 
       newUsers.map((curentUser) => 
         instAuthQueue.ensureRevivableJob({

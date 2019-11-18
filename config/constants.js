@@ -31,6 +31,6 @@ config.dataCollectingStart = moment.utc()
 
 config.ttlForUserUpdate = config.mSecFiveMinutes;
 
-config.limitSubscriptions = 50;
+config.limitSubscriptions = 200;
 
 module.exports = config;
