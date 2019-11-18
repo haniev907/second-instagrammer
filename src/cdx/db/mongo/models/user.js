@@ -48,10 +48,9 @@ class MongoUser extends MongoModelBase {
       .limit(limit);
   }
 
-  async getInfo(userId) {
+  async getBuyId(userId) {
     return this.Model.findOne(
       { _id: userId },
-      { firstName: 1, lastName: 1, email: 1 },
     ).exec();
   }
 }

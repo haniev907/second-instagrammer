@@ -1,5 +1,6 @@
 const DB = require('./db');
 const Web = require('./web');
+const Stock = require('./stock');
 
 class CDX {
   constructor(config) {
@@ -7,6 +8,7 @@ class CDX {
 
     this.db = new DB(this.config);
     this.web = new Web(this.config);
+    this.stock = new Stock(this.config, this.db);
   }
 }
 

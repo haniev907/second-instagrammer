@@ -21,6 +21,27 @@ async function instAuthJob() {
   queue.processJob(async (job) => {
     const { leader, follower } = job.data;
 
+    const leaderData = await cdx.db.user.getBuyId(leader);
+    const followerData = await cdx.db.user.getBuyId(follower);
+
+    const client = cdx.stock.api.init(
+      { username: 'prostoy495', password: 'asdfkk239j&', },
+    );
+
+    const updateLeader = async (stop = false) => {
+      const response = await client.getActivity();
+      console.log({ response });
+    };
+
+    if (!leaderData.lastUpdate || moment.utc()
+      .subtract(config.constants.ttlForUserUpdate / 1000, 'seconds')
+      .isAfter(leaderData.lastUpdate)
+    ) {
+      updateLeader();
+    }
+
+    await (new Promise(resolve => setTimeout(resolve, 30000)))
+
     // return cdxUtil.queue.RevivableQueue.removeJob();
   }, {
     concurrency: 1,
@@ -28,7 +49,6 @@ async function instAuthJob() {
 
   return queue;
 }
-
 
 async function ensureJobs(instAuthQueue) {
   const queue = new cdxUtil.queue.SimpleQueue(
