@@ -22,7 +22,7 @@ class MongoUser extends MongoModelBase {
       instId: { type: String  },
       observed: {
         status: { type: String },
-        lastFormer: { type: String },
+        lastFormer: { type: String, default: 'self' },
         formers: { type: Array, default: [] },
       },
       lastUpdate: { type: Date },
@@ -48,6 +48,28 @@ class MongoUser extends MongoModelBase {
       .limit(limit);
   }
 
+  async getFollowers(data, cursor = 0, limit = 10) {
+    return this.Model
+      .find({  
+        bot: false, 
+        $or: [{
+          'observed.status': 'self',
+          'observed.formers': {
+            $not: {
+              $in: [ data.leaderId ],
+            },
+          },
+        }, {
+          'observed.status': { $in: [ 'requested', 'followed' ], },
+          'observed.lastFormer': data.leaderId,
+        }, {
+          'observed.formers': { $size: 0 },
+        }],
+      })
+      .skip(cursor)
+      .limit(limit);
+  }
+
   async getBuyId(userId) {
     return this.Model.findOne(
       { _id: userId },
@@ -66,14 +88,14 @@ class MongoUser extends MongoModelBase {
     return this.getBuyId(userId);
   }
 
-  async updateFollowData(followerId, leaderId) {
+  async updateFollowData(followerId, leaderId, status) {
     return this.Model.updateOne(
       { _id: followerId },
       { 
         $push: { 'observed.formers': leaderId },
         $set: {
           'observed.lastFormer': leaderId,
-          'observed.status': 'requested',
+          'observed.status': status,
         },
       },
     );

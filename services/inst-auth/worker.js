@@ -85,6 +85,9 @@ async function instAuthJob() {
 
       if (response === 'error') return;
 
+      const followStatus = response.followed_by_viewer ? 'followed' :
+        response.requested_by_viewer ? 'requested' : 'self';
+
       /* Subscription required */
       const noNeedFollow = !response.is_private
         || response.requested_by_viewer || response.followed_by_viewer;
@@ -97,6 +100,19 @@ async function instAuthJob() {
         private: response.is_private,
         instId: response.id,
       });
+
+      /* Change follow status if now incorect */
+      if (followerData.observed.status !== followStatus) {
+        const followUpdateStatus = await cdx.db.user.updateFollowData(follower, leader, followStatus);
+
+        logger.info(
+          'Now status follow incorect, it did changed',
+          { followUpdateStatus, },
+          config.logging.instAuth.process,
+        );
+
+        return;
+      }
 
       /* Adding posts if now followed */
       if (response.followed_by_viewer) {
@@ -131,7 +147,8 @@ async function instAuthJob() {
         config.logging.instAuth.process,
       );
 
-      cdx.db.user.updateFollowData(follower, leader);
+      if (followResponse.status === 'ok')
+        cdx.db.user.updateFollowData(follower, leader, 'requested');
     };
 
     /* Check time ttl for leader and update */
@@ -200,9 +217,11 @@ async function ensureJobs(instAuthQueue) {
 
       if (limit < 0) return cursor;
 
-      const newUsers = await cdx.db.user.getNewUsers(cursor, limit);
+      const watchFollowers = await cdx.db.user.getFollowers({
+        leaderId: curentBot.id,
+      }, cursor, limit);
 
-      newUsers.map((curentUser) => 
+      watchFollowers.map((curentUser) => 
         instAuthQueue.ensureRevivableJob({
           follower: curentUser.id,
           leader: curentBot.id,
