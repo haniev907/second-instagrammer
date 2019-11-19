@@ -65,6 +65,19 @@ class MongoUser extends MongoModelBase {
 
     return this.getBuyId(userId);
   }
+
+  async updateFollowData(followerId, leaderId) {
+    return this.Model.updateOne(
+      { _id: followerId },
+      { 
+        $push: { 'observed.formers': leaderId },
+        $set: {
+          'observed.lastFormer': leaderId,
+          'observed.status': 'requested',
+        },
+      },
+    );
+  }
 }
 
 module.exports = MongoUser;

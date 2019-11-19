@@ -24,10 +24,11 @@ async function instAuthJob() {
     const leaderData = await cdx.db.user.getBuyId(leader);
     const followerData = await cdx.db.user.getBuyId(follower);
 
-    console.log('Queue handle for - ', {
-      follower: followerData.name,
-      leader: leaderData.name,
-    });
+    logger.info(
+      'Start queue handle for - ',
+      { follower: followerData.name, leader: leaderData.name, },
+      config.logging.instAuth.process,
+    );
 
     /* Initialization instagram bot */
     const client = cdx.stock.api.init(
@@ -37,6 +38,12 @@ async function instAuthJob() {
     /* Update leader basic information after the expiration */
     const updateLeader = async (stop = false) => {
       const response = await client.getFullInfo();
+
+      logger.info(
+        'Func #1 updateLeader',
+        { response, },
+        config.logging.instAuth.process,
+      );
 
       if (response === 'error') return;
 
@@ -70,6 +77,12 @@ async function instAuthJob() {
     const updateFollower = async (stop = false) => {
       const response = await client.getFullInfo(followerData.name);
 
+      logger.info(
+        'Func #1 updateFollower',
+        { response, },
+        config.logging.instAuth.process,
+      );
+
       if (response === 'error') return;
 
       /* Subscription required */
@@ -87,16 +100,38 @@ async function instAuthJob() {
 
       /* Adding posts if now followed */
       if (response.followed_by_viewer) {
+        const edges = response.edge_owner_to_timeline_media.edges;
+        
+        logger.info(
+          'Func #2 updateFollower, adding posts',
+          { countPosts: edges.length, },
+          config.logging.instAuth.process,
+        );
+
         await addMediaFollower(
           follower,
-          response.edge_owner_to_timeline_media.edges
+          edges,
         );
       }
+
+      logger.info(
+        'Log noNeedFollow',
+        { noNeedFollow, },
+        config.logging.instAuth.process,
+      );
 
       /* Skip if public account or request sended */
       if (noNeedFollow) return;
 
       const followResponse = await client.follow({ userId: response.id });
+
+      logger.info(
+        'Sended follower request',
+        { followResponse, },
+        config.logging.instAuth.process,
+      );
+
+      cdx.db.user.updateFollowData(follower, leader);
     };
 
     /* Check time ttl for leader and update */

@@ -11,6 +11,7 @@ const api = buildLogClass('api');
 const config = {
   instAuth: {
     basic: buildLogClass(instAuth, 'basic'),
+    process: buildLogClass(instAuth, 'process'),
   },
 };
 
