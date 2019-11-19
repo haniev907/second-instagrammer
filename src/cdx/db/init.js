@@ -3,6 +3,7 @@ const cdxUtil = require('@cdx/util');
 const MongoConnection = require('./mongo/connection');
 
 const MongoUser = require('./mongo/models/user');
+const MongoMedia = require('./mongo/models/media');
 
 class DB {
   constructor(config) {
@@ -46,6 +47,8 @@ class DB {
 
     /** @type {MongoUser} */
     this.user = registerMongoModel(MongoUser);
+    /** @type {MongoUser} */
+    this.media = registerMongoModel(MongoMedia);
   }
 }
 

@@ -12,9 +12,7 @@ const FileCookieStore = require('tough-cookie-filestore2')
 
 const baseUrl = 'https://www.instagram.com'
 
-const authErrorResponse = {
-  status: 'error',
-};
+const authErrorResponse = 'error';
 
 class Instagram {
   init(
@@ -126,7 +124,7 @@ class Instagram {
     };
 
     this.getActivity = wrapper(this.getActivity.bind(this));
-    this.getFullInfo = wrapper(this.getFullInfo.bind(this)); 
+    this.getFullInfo = wrapper(this.getFullInfo.bind(this));
   }
 
   async getActivity() {

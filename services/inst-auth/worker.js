@@ -24,22 +24,21 @@ async function instAuthJob() {
     const leaderData = await cdx.db.user.getBuyId(leader);
     const followerData = await cdx.db.user.getBuyId(follower);
 
-    console.log('Start queue for users - ', {
-      leader,
-      follower,
+    console.log('Queue handle for - ', {
+      follower: followerData.name,
+      leader: leaderData.name,
     });
 
+    /* Initialization instagram bot */
     const client = cdx.stock.api.init(
       { username: leaderData.name, password: leaderData.password, },
     );
 
+    /* Update leader basic information after the expiration */
     const updateLeader = async (stop = false) => {
       const response = await client.getFullInfo();
 
-      console.log('Update leader info');
-      console.log({ response, });
-
-      if (response.status === 'error') return;
+      if (response === 'error') return;
 
       const dbResponse = await cdx.db.user.updateUser(leader, {
         followers: response.edge_followed_by.count,
@@ -48,25 +47,36 @@ async function instAuthJob() {
         private: response.is_private,
         instId: response.id,
       });
-
-      console.log({ dbResponse, });
     };
 
-    if (!leaderData.lastUpdate || moment.utc()
-      .subtract(config.constants.ttlForUserUpdate / 1000, 'seconds')
-      .isAfter(leaderData.lastUpdate)
-    ) {
-      updateLeader();
-    }
+    /* Method for authentication verification */
+    const authPoint = async () => {
+      return await client.getActivity();
+    };
 
+    /* Function for mapping and adding follower posts */
+    const addMediaFollower = async (userId, mediaArray) => {
+      mediaArray.map(({ node }) => {
+        cdx.db.media.addMedia({
+          userId,
+          url: node.display_url,
+          instId: node.id,
+          is_video: node.is_video,
+        });
+      });
+    };
+
+    /* Update basic information follower and follow login */
     const updateFollower = async (stop = false) => {
       const response = await client.getFullInfo(followerData.name);
 
-      console.log('Update follower info');
-      console.log({ response, });
+      if (response === 'error') return;
 
-      if (response.status === 'error') return;
+      /* Subscription required */
+      const noNeedFollow = !response.is_private
+        || response.requested_by_viewer || response.followed_by_viewer;
 
+      /* Saving basic information */
       const dbResponse = await cdx.db.user.updateUser(follower, {
         followers: response.edge_followed_by.count,
         subscriptions: response.edge_follow.count,
@@ -75,13 +85,41 @@ async function instAuthJob() {
         instId: response.id,
       });
 
-      console.log({ dbResponse, });
+      /* Adding posts if now followed */
+      if (response.followed_by_viewer) {
+        await addMediaFollower(
+          follower,
+          response.edge_owner_to_timeline_media.edges
+        );
+      }
+
+      /* Skip if public account or request sended */
+      if (noNeedFollow) return;
+
+      const followResponse = await client.follow({ userId: response.id });
     };
 
-    updateFollower();
+    /* Check time ttl for leader and update */
+    if (!leaderData.lastUpdate || moment.utc()
+      .subtract(config.constants.ttlForUserUpdate / 1000, 'seconds')
+      .isAfter(leaderData.lastUpdate)
+    ) {
+      await updateLeader();
+    } else {
+      const isAuthorized = await authPoint();
+
+      if (isAuthorized === 'error') return;
+    }
+
+    /* Check time ttl for follower and update */
+    if (!followerData.lastUpdate || moment.utc()
+      .subtract(config.constants.ttlForUserUpdate / 1000, 'seconds')
+      .isAfter(followerData.lastUpdate)
+    ) {
+      await updateFollower();
+    }
 
     await (new Promise(resolve => setTimeout(resolve, 300000)))
-
     // return cdxUtil.queue.RevivableQueue.removeJob();
   }, {
     concurrency: 1,
