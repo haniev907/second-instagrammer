@@ -20,6 +20,7 @@ class MongoUser extends MongoModelBase {
       status: { type: String, default: '' },
       private: { type: Boolean, default: false },
       instId: { type: String  },
+      preview: { type: String },
       observed: {
         status: { type: String, default: 'self' },
         lastFormer: { type: String },

@@ -63,14 +63,18 @@ async function instAuthJob() {
 
     /* Function for mapping and adding follower posts */
     const addMediaFollower = async (userId, mediaArray) => {
-      mediaArray.map(({ node }) => {
-        cdx.db.media.addMedia({
+      const allResponses = mediaArray.reduce(async (prev, { node }) => {
+        await prev;
+
+        return cdx.db.media.addMedia({
           userId,
           url: node.display_url,
-          instId: node.id,
           is_video: node.is_video,
+          instId: node.id,
         });
-      });
+      }, Promise.resolve());
+
+      return Promise.all(allResponses);
     };
 
     /* Update basic information follower and follow login */
@@ -100,6 +104,7 @@ async function instAuthJob() {
         private: response.is_private,
         publications: response.edge_owner_to_timeline_media.count,
         instId: response.id,
+        preview: response.profile_pic_url,
       });
 
       /* Change follow status if now incorect */
@@ -140,16 +145,24 @@ async function instAuthJob() {
       /* Skip if public account or request sended */
       if (noNeedFollow) return;
 
-      const followResponse = await client.follow({ userId: response.id });
+      try {
+        const followResponse = await client.follow({ userId: response.id });
 
-      logger.info(
-        'Sended follower request',
-        { followResponse, },
-        config.logging.instAuth.process,
-      );
+        logger.info(
+          'Sended follower request',
+          { followResponse, },
+          config.logging.instAuth.process,
+        );
 
-      if (followResponse.status === 'ok')
-        cdx.db.user.updateFollowData(follower, leader, 'requested');
+        if (followResponse.status === 'ok')
+          cdx.db.user.updateFollowData(follower, leader, 'requested');
+      } catch (error) {
+        logger.info(
+          'Error for send follow',
+          { error, },
+          config.logging.instAuth.process,
+        );
+      }
     };
 
     /* Check time ttl for leader and update */
@@ -200,6 +213,8 @@ async function ensureJobs(instAuthQueue) {
 
   // cdx.db.user.createUser({
   //   name: 'haniev_i',
+  //   password: 'asdfkk239j&',
+  //   bot: true,
   // });
 
   // cdx.db.user.createUser({
@@ -225,7 +240,7 @@ async function ensureJobs(instAuthQueue) {
       if (limit < 0) return cursor;
 
       const watchFollowers = await cdx.db.user.getFollowers({
-        leaderId: curentBot.id,
+        leaderId: curentBot._id,
       }, cursor, limit);
 
       watchFollowers.map((curentUser) => 
@@ -235,7 +250,7 @@ async function ensureJobs(instAuthQueue) {
         })
       );
 
-      return cursor + limit;
+      return cursor + watchFollowers.length;
     };
 
     const jobs = bots.reduce(pairingFn, 0);

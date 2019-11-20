@@ -22,7 +22,7 @@ class MongoMedia extends MongoModelBase {
 
   async addMedia(infArray) {
     return this.Model.updateMany(
-      { userId: infArray.userId }, 
+      { instId: infArray.instId }, 
       { ...infArray, },
       { upsert: true },
     ).exec();

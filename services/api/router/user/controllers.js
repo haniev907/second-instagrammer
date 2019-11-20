@@ -17,7 +17,6 @@ const collect = (config, cdx) => {
 
       if (profile !== null) {
         posts = await cdx.db.media.getByUserId(profile._id);
-        console.log(posts);
       }
 
       res.json(new cdxUtil.UserResponse({
