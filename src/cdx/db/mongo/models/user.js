@@ -14,15 +14,15 @@ class MongoUser extends MongoModelBase {
       name: { type: String, required: true, index: true, unique: true },
       bot: { type: Boolean, required: true, default: false },
       password: { type: String },
-      followers: { type: Number },
+      followers: { type: Number, default: 0 },
       subscriptions: { type: Number, default: 0 },
-      publications: { type: Number },
-      status: { type: String },
-      private: { type: Boolean },
+      publications: { type: Number, default: 0 },
+      status: { type: String, default: '' },
+      private: { type: Boolean, default: false },
       instId: { type: String  },
       observed: {
-        status: { type: String },
-        lastFormer: { type: String, default: 'self' },
+        status: { type: String, default: 'self' },
+        lastFormer: { type: String },
         formers: { type: Array, default: [] },
       },
       lastUpdate: { type: Date },
@@ -73,6 +73,12 @@ class MongoUser extends MongoModelBase {
   async getBuyId(userId) {
     return this.Model.findOne(
       { _id: userId },
+    ).exec();
+  }
+
+  async getByName(userName) {
+    return this.Model.findOne(
+      { name: userName },
     ).exec();
   }
 

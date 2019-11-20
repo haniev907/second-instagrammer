@@ -41,5 +41,6 @@ module.exports = {
   queue,
   logging,
   UserResponseOK,
+  UserResponse,
   UserError,
 };

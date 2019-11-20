@@ -27,6 +27,12 @@ class MongoMedia extends MongoModelBase {
       { upsert: true },
     ).exec();
   }
+
+  async getByUserId(userId) {
+    return this.Model.find({
+      userId, 
+    }).exec();
+  }
 }
 
 module.exports = MongoMedia;

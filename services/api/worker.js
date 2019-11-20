@@ -58,6 +58,8 @@ server.app.use((err, req, res, next) => {
 
     res.json(response.json());
   } else {
+    console.log(err);
+
     // - Some interval error has happend, no need to reveal the details
     const response = new cdxUtil.UserResponse(
       null,

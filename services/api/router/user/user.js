@@ -7,7 +7,7 @@ const init = (config, cdx) => {
 
   router.use(express.json());
 
-  // router.put('/details/sensitive', controllers.updateUserSensitiveDetails);
+  router.get('/profile/:profileName', controllers.getProfileByName);
 
   return router;
 };

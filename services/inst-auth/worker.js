@@ -13,7 +13,7 @@ async function instAuthJob() {
     {
       limiter: {
         max: 1,
-        duration: config.constants.mSecOneSecond,
+        duration: config.constants.mSecFiveSeconds,
       },
     },
   );
@@ -98,6 +98,7 @@ async function instAuthJob() {
         subscriptions: response.edge_follow.count,
         status: response.biography,
         private: response.is_private,
+        publications: response.edge_owner_to_timeline_media.count,
         instId: response.id,
       });
 
@@ -171,8 +172,8 @@ async function instAuthJob() {
       await updateFollower();
     }
 
-    await (new Promise(resolve => setTimeout(resolve, 300000)))
-    // return cdxUtil.queue.RevivableQueue.removeJob();
+    // await (new Promise(resolve => setTimeout(resolve, 300000)));
+    return cdxUtil.queue.RevivableQueue.removeJob();
   }, {
     concurrency: 1,
   });
@@ -186,7 +187,7 @@ async function ensureJobs(instAuthQueue) {
     config.queues.instAuth.jobs.ensureJobs,
   );
 
-  const repeatOpts = { every: config.constants.mSecFiveMinutes };
+  const repeatOpts = { every: config.constants.mSecThirtySeconds };
   await queue.addRepeatableJob({}, repeatOpts);
 
   if (config.common.coldStart) await queue.addSimpleJob({});
@@ -198,17 +199,23 @@ async function ensureJobs(instAuthQueue) {
   // });
 
   // cdx.db.user.createUser({
-  //   name: '_fa_n_ta_ze_r_',
+  //   name: 'haniev_i',
   // });
 
   // cdx.db.user.createUser({
-  //   name: 'haniev_i',
+  //   name: '_fa_n_ta_ze_r_',
   // });
 
   // return false;
 
   queue.processJob(async () => {
     const bots = await cdx.db.user.getUsers({ bot: true });
+
+    logger.info(
+      'Bots started watings',
+      { countBots: bots.length, },
+      config.logging.instAuth.process,
+    );
 
     const pairingFn = async (prev, curentBot) => {
       const cursor = await prev;
