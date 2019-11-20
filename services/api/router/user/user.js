@@ -8,6 +8,9 @@ const init = (config, cdx) => {
   router.use(express.json());
 
   router.get('/profile/:profileName', controllers.getProfileByName);
+  router.get('/profile/search/:profileName', controllers.searchProfiles);
+
+  router.post('/profile', controllers.addProfile);
 
   return router;
 };

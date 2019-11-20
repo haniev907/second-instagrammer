@@ -5,6 +5,22 @@ const moment = require('moment');
 
 const MongoModelBase = require('./base');
 
+const paramsValidFollower = (data) => (
+  [{
+    'observed.status': 'self',
+    'observed.formers': {
+      $not: {
+        $in: [ data.leaderId ],
+      },
+    },
+  }, {
+    'observed.status': { $in: [ 'requested', 'followed' ], },
+    'observed.lastFormer': data.leaderId,
+  }, {
+    'observed.formers': { $size: 0 },
+  }]
+);
+
 class MongoUser extends MongoModelBase {
   constructor(config, connection) {
     super(config, connection);
@@ -42,6 +58,17 @@ class MongoUser extends MongoModelBase {
     return this.Model.find(query);
   }
 
+  async searchUsers(profileName) {
+    return this.Model
+      .find({ bot: false, name: profileName }, {
+        name: 1,
+        preview: 1,
+        _id: 0,
+      })
+      .limit(20)
+      .exec();
+  }
+
   async getNewUsers(cursor = 0, limit = 10) {
     return this.Model
       .find({ bot: false, 'observed.formers': { $size: 0 } })
@@ -53,22 +80,23 @@ class MongoUser extends MongoModelBase {
     return this.Model
       .find({  
         bot: false, 
-        $or: [{
-          'observed.status': 'self',
-          'observed.formers': {
-            $not: {
-              $in: [ data.leaderId ],
-            },
-          },
-        }, {
-          'observed.status': { $in: [ 'requested', 'followed' ], },
-          'observed.lastFormer': data.leaderId,
-        }, {
-          'observed.formers': { $size: 0 },
-        }],
+        $or: paramsValidFollower({
+          leaderId: data.leaderId,
+        }),
       })
       .skip(cursor)
       .limit(limit);
+  }
+
+  async isValidFollower(leaderId, followerId) {
+    const curentFollower = await this.Model.findOne({
+      _id: followerId,
+      $or: paramsValidFollower({
+        leaderId,
+      }),
+    }).exec();
+
+    return curentFollower !== null;
   }
 
   async getBuyId(userId) {

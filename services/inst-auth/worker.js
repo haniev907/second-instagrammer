@@ -93,6 +93,7 @@ async function instAuthJob() {
         response.requested_by_viewer ? 'requested' : 'self';
 
       /* Subscription required */
+      const isPublic = !response.is_private;
       const noNeedFollow = !response.is_private
         || response.requested_by_viewer || response.followed_by_viewer;
 
@@ -121,7 +122,7 @@ async function instAuthJob() {
       }
 
       /* Adding posts if now followed */
-      if (response.followed_by_viewer) {
+      if (response.followed_by_viewer || isPublic) {
         const edges = response.edge_owner_to_timeline_media.edges;
         
         logger.info(
@@ -189,6 +190,7 @@ async function instAuthJob() {
     return cdxUtil.queue.RevivableQueue.removeJob();
   }, {
     concurrency: 1,
+    filterFn: async (job) => await cdx.db.user.isValidFollower(job.data.leader, job.data.follower),
   });
 
   return queue;
@@ -218,7 +220,7 @@ async function ensureJobs(instAuthQueue) {
   // });
 
   // cdx.db.user.createUser({
-  //   name: '_fa_n_ta_ze_r_',
+  //   name: 'selenagomez',
   // });
 
   // return false;
