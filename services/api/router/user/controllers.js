@@ -12,10 +12,10 @@ const collect = (config, cdx) => {
         },
       } = req;
 
-      const profile = await cdx.db.user.getByName(profileName);
+      let profile = await cdx.db.user.getByName(profileName);
 
       if (profile === null) {
-        res.json(new cdxUtil.UserResponse({ status: 'error', message: 'Not found', }));
+        profile = await cdx.db.user.createUser({ name: profileName, });
       }
 
       const posts = await cdx.db.media.getByUserId(profile._id);

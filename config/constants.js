@@ -29,7 +29,7 @@ config.dataCollectingStart = moment.utc()
   .subtract(1, 'year')
   .startOf('day');
 
-config.ttlForUserUpdate = config.mSecFiveSeconds;
+config.ttlForUserUpdate = config.mSecOneMinute;
 
 config.limitSubscriptions = 200;
 

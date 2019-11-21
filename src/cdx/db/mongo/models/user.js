@@ -5,6 +5,8 @@ const moment = require('moment');
 
 const MongoModelBase = require('./base');
 
+const emptyAvatar = 'https://scontent-lhr3-1.cdninstagram.com/vp/1f43bcfa6c680475953cb3bcd1aca607/5E695BF1/t51.2885-19/44884218_345707102882519_2446069589734326272_n.jpg?_nc_ht=scontent-lhr3-1.cdninstagram.com';
+
 const paramsValidFollower = (data) => (
   [{
     'observed.status': 'self',
@@ -36,7 +38,8 @@ class MongoUser extends MongoModelBase {
       status: { type: String, default: '' },
       private: { type: Boolean, default: false },
       instId: { type: String  },
-      preview: { type: String },
+      preview: { type: String, default: emptyAvatar },
+      processed: { type: Boolean, default: false },
       observed: {
         status: { type: String, default: 'self' },
         lastFormer: { type: String },
@@ -117,6 +120,7 @@ class MongoUser extends MongoModelBase {
       {  
         ...updateOptions,
         lastUpdate: moment.utc().toDate(),
+        processed: true,
       },
     ).exec();
 
