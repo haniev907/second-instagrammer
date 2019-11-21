@@ -1,0 +1,9 @@
+{
+  "apps": [
+    {
+      "name": "inst-auth-worker",
+      "script": "./services/inst-auth/worker.js",
+      "instances": 1
+    }
+  ]
+}

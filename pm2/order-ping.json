@@ -1,8 +1,0 @@
-{
-  "apps": [
-    {
-      "name": "order-ping",
-      "script": "./services/user/order-ping.js"
-    }
-  ]
-}

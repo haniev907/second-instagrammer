@@ -1,8 +1,0 @@
-{
-  "apps": [
-    {
-      "name": "cluster-worker",
-      "script": "./services/cluster/worker/index.js"
-    }
-  ]
-}

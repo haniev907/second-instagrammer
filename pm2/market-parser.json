@@ -1,8 +1,0 @@
-{
-  "apps": [
-    {
-      "name": "market-parser-worker",
-      "script": "./services/market-parser/worker.js"
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "apps": [
-    {
-      "name": "stock-actions",
-      "script": "./services/stock-actions/worker.js",
-      "instances": 1
-    }
-  ]
-}
