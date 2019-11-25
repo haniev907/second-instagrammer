@@ -12,7 +12,7 @@ class Server {
     this.config = config.server.express;
     const whitelist = this.config.CORSOrigin.split(',');
 
-    this.app.use(cors({ origin: whitelist }));
+    this.app.use(cors({ credentials: true, origin: whitelist }));
   }
 
   registerRouter(root, router) {
