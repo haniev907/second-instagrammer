@@ -30,6 +30,11 @@ async function instAuthJob() {
       config.logging.instAuth.process,
     );
 
+    const next = async () => {
+      await cdxUtil.sleep(5000);
+      return cdxUtil.queue.RevivableQueue.removeJob();
+    };
+
     /* Initialization instagram bot */
     const client = cdx.stock.api.init(
       { username: leaderData.name, password: leaderData.password, },
@@ -74,7 +79,7 @@ async function instAuthJob() {
         });
       }, Promise.resolve());
 
-      return Promise.all(allResponses);
+      return allResponses;
     };
 
     /* Update basic information follower and follow login */
@@ -87,7 +92,7 @@ async function instAuthJob() {
         config.logging.instAuth.process,
       );
 
-      if (response === 'error') return;
+      if (response === 'error') return 'error';
 
       const followStatus = response.followed_by_viewer ? 'followed' :
         response.requested_by_viewer ? 'requested' : 'self';
@@ -155,15 +160,47 @@ async function instAuthJob() {
           config.logging.instAuth.process,
         );
 
-        if (followResponse.status === 'ok')
+        if (followResponse.status === 'ok') {
           cdx.db.user.updateFollowData(follower, leader, 'requested');
+        }
       } catch (error) {
         logger.info(
           'Error for send follow',
           { error, },
           config.logging.instAuth.process,
         );
+
+        return 'error';
       }
+    };
+
+    const invalidLeader = async () => {
+      logger.info(
+        `Bot ${leaderData.name} is error auth`,
+        {},
+        config.logging.instAuth.process,
+      );
+
+      const banIncrement = (leaderData.ban || 0) + 1;
+      const dbResponse = await cdx.db.user.updateUser(leader, {
+        ban: banIncrement,
+      });
+
+      /* Clear all subscribers from binding */
+      if (banIncrement === config.constants.amountForBanLeader) {
+        await cdx.db.user.clearingFollowers(leader);
+      }
+
+      logger.info(
+        `Raised ban increment, ban = ${banIncrement}`,
+        {},
+        config.logging.instAuth.process,
+      );
+    };
+
+    const returnOfInvalid = async () => {
+      await invalidLeader();
+      return await next();
     };
 
     /* Check time ttl for leader and update */
@@ -171,11 +208,14 @@ async function instAuthJob() {
       .subtract(config.constants.ttlForUserUpdate / 1000, 'seconds')
       .isAfter(leaderData.lastUpdate)
     ) {
-      await updateLeader();
+      const resultUpdateLeader = await updateLeader();
+
+      if (resultUpdateLeader === 'error') return returnOfInvalid();
     } else {
       const isAuthorized = await authPoint();
 
-      if (isAuthorized === 'error') return;
+      /* If the bot is broken */
+      if (isAuthorized === 'error') return returnOfInvalid();
     }
 
     /* Check time ttl for follower and update */
@@ -186,8 +226,7 @@ async function instAuthJob() {
       await updateFollower();
     }
 
-    // await (new Promise(resolve => setTimeout(resolve, 300000)));
-    return cdxUtil.queue.RevivableQueue.removeJob();
+    return await next();
   }, {
     concurrency: 1,
     filterFn: async (job) => await cdx.db.user.isValidFollower(job.data.leader, job.data.follower),
@@ -202,39 +241,25 @@ async function ensureJobs(instAuthQueue) {
     config.queues.instAuth.jobs.ensureJobs,
   );
 
-  const repeatOpts = { every: config.constants.mSecThirtySeconds };
+  const repeatOpts = { every: config.constants.mSecOneMinute };
   await queue.addRepeatableJob({}, repeatOpts);
 
   if (config.common.coldStart) await queue.addSimpleJob({});
 
-  // cdx.db.user.createUser({
-  //   name: 'prostoy495',
-  //   password: 'asdfkk239j&',
-  //   bot: true,
-  // });
-
-  // cdx.db.user.createUser({
-  //   name: 'haniev_i',
-  //   password: 'asdfkk239j&',
-  //   bot: true,
-  // });
-
-  // cdx.db.user.createUser({
-  //   name: 'selenagomez',
-  // });
-
-  // return false;
-
   queue.processJob(async () => {
-    const bots = await cdx.db.user.getUsers({ bot: true });
+    const validBots = await cdx.db.user.getUsers({ bot: true }); 
+    const invalidBots = await cdx.db.user.getUsers({ bot: true, ban: config.constants.amountForBanLeader }); 
 
     logger.info(
-      'Bots started watings',
-      { countBots: bots.length, },
+      'Bots started wathing',
+      { 
+        countValidBots: validBots.length, 
+        countInvalidBots: invalidBots.length,
+      },
       config.logging.instAuth.process,
     );
 
-    const pairingFn = async (prev, curentBot) => {
+    const validPairingFn = async (prev, curentBot) => {
       const cursor = await prev;
 
       const limit = config.constants.limitSubscriptions - curentBot.subscriptions;
@@ -244,6 +269,15 @@ async function ensureJobs(instAuthQueue) {
       const watchFollowers = await cdx.db.user.getFollowers({
         leaderId: curentBot._id,
       }, cursor, limit);
+
+      const strFollowersName = (watchFollowers.map((curentFollower) => curentFollower.name)
+        || []).join(', ');
+
+      logger.info(
+        `Bot ${curentBot.name} is start watching ${watchFollowers.length} followers: ${strFollowersName}`,
+        {},
+        config.logging.instAuth.process,
+      );
 
       watchFollowers.map((curentUser) => 
         instAuthQueue.ensureRevivableJob({
@@ -255,7 +289,38 @@ async function ensureJobs(instAuthQueue) {
       return cursor + watchFollowers.length;
     };
 
-    const jobs = bots.reduce(pairingFn, 0);
+    const invalidLeaderClearing = async (prev, curentBot) => {
+      await prev;
+
+      logger.info(
+        `Invalid bot ${curentBot.name} is start clearing followers`,
+        {},
+        config.logging.instAuth.process,
+      );
+
+      const dbResponse = await cdx.db.user.clearingFollowers(curentBot._id);
+
+      logger.info(
+        `Crearing db response`,
+        { dbResponse },
+        config.logging.instAuth.process,
+      );
+
+      return dbResponse;
+    };
+
+    const ancientUsersClearing = async (prev, curentUser) => {
+      const dbResponse = await cdx.db.user.clearLeaderForOldUsers(config.constants.ttlForReapUser);
+
+      logger.info(
+        'Ancient users',
+        { dbResponse },
+        config.logging.instAuth.process,
+      );
+    };
+
+    const pairingJobs = validBots.reduce(validPairingFn, 0);
+    const clearingJobs = invalidBots.reduce(invalidLeaderClearing, 0);
 
     // const promiseJobs = [].concat(...jobs);
     // return Promise.all(promiseJobs);

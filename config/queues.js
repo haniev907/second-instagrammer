@@ -7,7 +7,7 @@ const EVENT = 'ev';
 
 const buildQueueName = (...path) => path.join(DELIM);
 
-const instAuth = buildQueueName(SERVICE, 'inst-auth');
+const instAuth = buildQueueName(SERVICE, 'inst-auth_v3');
 
 config.redisHost = process.env.BULL_REDIS_HOST || '';
 config.redisPort = parseInt(process.env.BULL_REDIS_PORT || 6379, 10);

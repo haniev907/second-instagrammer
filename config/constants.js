@@ -29,8 +29,10 @@ config.dataCollectingStart = moment.utc()
   .subtract(1, 'year')
   .startOf('day');
 
-config.ttlForUserUpdate = config.mSecOneMinute;
+config.ttlForUserUpdate = config.mSecFiveMinutes;
 
 config.limitSubscriptions = 200;
+config.amountForBanLeader = 3;
+config.ttlForReapUser = config.mSecOneHour;
 
 module.exports = config;

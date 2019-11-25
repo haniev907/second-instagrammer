@@ -1,9 +1,8 @@
 const winston = require('winston');
 
 
-const dataToLog = (message, meta, logClass, log) => log(
-  `${logClass}::${message}`,
-  meta,
+const dataToLog = (message, meta, logClass, log) => console.log(
+  `${logClass}::${message} ${JSON.stringify(meta || {})}`,
 );
 
 
@@ -15,26 +14,12 @@ class ExtendedLogger {
     });
 
     // Specify default meta values
-    this.defaultMeta = {
-      // env: process.env.NODE_ENV || 'development',
-    };
+    this.defaultMeta = {};
 
     const transport = new winston.transports.Console({
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.splat(),
-        winston.format.printf((info) => {
-          const timestamp = `${info.timestamp} `;
-          const level = `${info.level} `;
-          const logClass = `${info.message}`;
-
-          const metaObject = { ...info.meta, ...this.defaultMeta } || { ...this.defaultMeta };
-          // metaObject.env = process.env.NODE_ENV || 'development';
-
-          const meta = JSON.stringify(metaObject);
-
-          return `${timestamp}${level}[${logClass}]:${meta}`;
-        }),
       ),
     });
 

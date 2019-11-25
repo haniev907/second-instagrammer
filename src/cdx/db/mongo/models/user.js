@@ -7,6 +7,10 @@ const MongoModelBase = require('./base');
 
 const emptyAvatar = 'https://scontent-lhr3-1.cdninstagram.com/vp/1f43bcfa6c680475953cb3bcd1aca607/5E695BF1/t51.2885-19/44884218_345707102882519_2446069589734326272_n.jpg?_nc_ht=scontent-lhr3-1.cdninstagram.com';
 
+const ongoingСhecks = () => ({
+  ban: { $lte: 2 },
+});
+
 const paramsValidFollower = (data) => (
   [{
     'observed.status': 'self',
@@ -31,6 +35,7 @@ class MongoUser extends MongoModelBase {
       _id: { type: String, default: uuid.v4 },
       name: { type: String, required: true, index: true, unique: true },
       bot: { type: Boolean, required: true, default: false },
+      ban: { type: Number, default: 0 },
       password: { type: String },
       followers: { type: Number, default: 0 },
       subscriptions: { type: Number, default: 0 },
@@ -42,7 +47,7 @@ class MongoUser extends MongoModelBase {
       processed: { type: Boolean, default: false },
       observed: {
         status: { type: String, default: 'self' },
-        lastFormer: { type: String },
+        lastFormer: { type: String, default: 'none' },
         formers: { type: Array, default: [] },
       },
       lastUpdate: { type: Date },
@@ -58,7 +63,7 @@ class MongoUser extends MongoModelBase {
   }
 
   async getUsers(query = {}) {
-    return this.Model.find(query);
+    return this.Model.find(Object.assign(ongoingСhecks(), query));
   }
 
   async searchUsers(profileName) {
@@ -69,6 +74,20 @@ class MongoUser extends MongoModelBase {
         _id: 0,
       })
       .limit(20)
+      .exec();
+  }
+
+  async clearLeaderForOldUsers(timestamp) {
+    const ttl = moment.utc()
+      .subtract(timestamp, 'seconds');
+
+    return this.Model.updateMany({ 
+      bot: false,
+      'observed.lastFormer': { $ne: 'none' },  
+      lastUpdate: { $lte: ttl }
+    }, {
+      'observed.status': 'self',
+    }, { upsert: false })
       .exec();
   }
 
@@ -121,10 +140,21 @@ class MongoUser extends MongoModelBase {
         ...updateOptions,
         lastUpdate: moment.utc().toDate(),
         processed: true,
+        ban: updateOptions.ban || 0,
       },
     ).exec();
 
     return this.getBuyId(userId);
+  }
+
+  async clearingFollowers(leaderId) {
+    return this.Model.updateMany(
+      { bot: false, 'observed.lastFormer': leaderId, },
+      {  
+        'observed.status': 'self',
+      },
+      { upsert: false, }
+    ).exec();
   }
 
   async updateFollowData(followerId, leaderId, status) {

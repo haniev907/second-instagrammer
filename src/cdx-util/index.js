@@ -34,6 +34,8 @@ class UserResponseOK extends UserResponse {
   }
 }
 
+const sleep = async (ttl) => new Promise(resolve => setTimeout(resolve, ttl));
+
 module.exports = {
   common,
   envFlag, 
@@ -43,4 +45,5 @@ module.exports = {
   UserResponseOK,
   UserResponse,
   UserError,
+  sleep,
 };

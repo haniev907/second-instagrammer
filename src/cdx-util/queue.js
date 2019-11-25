@@ -1,7 +1,11 @@
 const Bull = require('bull');
 const { hash } = require('./common');
 
+const cdxUtil = require('./');
+
 const REVIVAL_NEXT_MSG = 'REVIVAL_NEXT';
+
+const logger = require('./logging');
 
 class Queue {
   constructor(config, name, queueOpts = null) {
@@ -44,9 +48,9 @@ class Queue {
       } catch (err) {
         const msg = err && (err.message || err);
         if (msg !== REVIVAL_NEXT_MSG) {
-          // logger.error(`Unhandled exception occurred during job processing: ${
-          //   msg
-          // }`);
+          logger.info(`Unhandled exception occurred during job processing: ${
+            msg
+          }`);
         }
 
         // It's helpful, uncomment this to see stack trace.
