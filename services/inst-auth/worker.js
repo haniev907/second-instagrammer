@@ -25,13 +25,13 @@ async function instAuthJob() {
     const followerData = await cdx.db.user.getBuyId(follower);
 
     logger.info(
-      'Start queue handle for - ',
+      'Start queue handle',
       { follower: followerData.name, leader: leaderData.name, },
       config.logging.instAuth.process,
     );
 
     const next = async () => {
-      await cdxUtil.sleep(5000);
+      await cdxUtil.sleep(config.constants.mSecFiveSeconds);
       return cdxUtil.queue.RevivableQueue.removeJob();
     };
 
@@ -42,6 +42,10 @@ async function instAuthJob() {
 
     /* Update leader basic information after the expiration */
     const updateLeader = async (stop = false) => {
+      logger.info( 'Func #1 updateLeader start', {},
+        config.logging.instAuth.process,
+      );
+      
       const response = await client.getFullInfo();
 
       logger.info(
@@ -84,6 +88,10 @@ async function instAuthJob() {
 
     /* Update basic information follower and follow login */
     const updateFollower = async (stop = false) => {
+      logger.info( 'Func #1 updateFollower start', {},
+        config.logging.instAuth.process,
+      );
+
       const response = await client.getFullInfo(followerData.name);
 
       logger.info(
@@ -113,6 +121,12 @@ async function instAuthJob() {
         preview: response.profile_pic_url,
       });
 
+      logger.info(
+        'Func #2 updateFollower Saving',
+        { dbResponse, },
+        config.logging.instAuth.process,
+      );
+
       /* Change follow status if now incorect */
       if (followerData.observed.status !== followStatus) {
         const followUpdateStatus = await cdx.db.user.updateFollowData(follower, leader, followStatus);
@@ -122,8 +136,6 @@ async function instAuthJob() {
           { followUpdateStatus, },
           config.logging.instAuth.process,
         );
-
-        return;
       }
 
       /* Adding posts if now followed */
@@ -198,7 +210,13 @@ async function instAuthJob() {
       );
     };
 
-    const returnOfInvalid = async () => {
+    const returnOfInvalid = async (msg) => {
+      logger.info(
+        `Return next job for invalid leader`,
+        { msg },
+        config.logging.instAuth.process,
+      );
+
       await invalidLeader();
       return await next();
     };
@@ -210,12 +228,18 @@ async function instAuthJob() {
     ) {
       const resultUpdateLeader = await updateLeader();
 
-      if (resultUpdateLeader === 'error') return returnOfInvalid();
+      if (resultUpdateLeader === 'error') return returnOfInvalid('resultUpdateLeader is error');
     } else {
       const isAuthorized = await authPoint();
 
       /* If the bot is broken */
-      if (isAuthorized === 'error') return returnOfInvalid();
+      if (isAuthorized === 'error') return returnOfInvalid('isAuthorized leader is error');
+
+      logger.info(
+        'Leader success auth',
+        {},
+        config.logging.instAuth.process,
+      );
     }
 
     /* Check time ttl for follower and update */
@@ -224,6 +248,12 @@ async function instAuthJob() {
       .isAfter(followerData.lastUpdate)
     ) {
       await updateFollower();
+    } else {
+      logger.info(
+        'Follower time is up',
+        {},
+        config.logging.instAuth.process,
+      );
     }
 
     return await next();
@@ -241,7 +271,7 @@ async function ensureJobs(instAuthQueue) {
     config.queues.instAuth.jobs.ensureJobs,
   );
 
-  const repeatOpts = { every: config.constants.mSecOneMinute };
+  const repeatOpts = { every: config.constants.mSecFiveMinutes };
   await queue.addRepeatableJob({}, repeatOpts);
 
   if (config.common.coldStart) await queue.addSimpleJob({});
