@@ -45,7 +45,7 @@ async function instAuthJob() {
       logger.info( 'Func #1 updateLeader start', {},
         config.logging.instAuth.process,
       );
-      
+
       const response = await client.getFullInfo();
 
       logger.info(
@@ -349,7 +349,10 @@ async function ensureJobs(instAuthQueue) {
       );
     };
 
-    const pairingJobs = validBots.reduce(validPairingFn, 0);
+    await ancientUsersClearing();
+
+    const pairingJobs = validBots.sort((a, b) => Math.random() - .5)
+      .reduce(validPairingFn, 0);
     const clearingJobs = invalidBots.reduce(invalidLeaderClearing, 0);
 
     // const promiseJobs = [].concat(...jobs);

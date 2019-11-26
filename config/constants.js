@@ -33,6 +33,6 @@ config.ttlForUserUpdate = config.mSecFiveMinutes;
 
 config.limitSubscriptions = 200;
 config.amountForBanLeader = 3;
-config.ttlForReapUser = config.mSecOneHour;
+config.ttlForReapUser = config.mSecSixHours;
 
 module.exports = config;
